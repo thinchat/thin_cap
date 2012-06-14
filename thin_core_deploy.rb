@@ -116,7 +116,7 @@ namespace :deploy do
     sudo "update-rc.d god-service defaults"
     sudo "service god-service start"
   end
-  after "deploy:setup_config", "deploy:god"
+  after "deploy", "deploy:god"
 
   desc "Create the database"
   task :create_database, roles: :app do
@@ -143,7 +143,7 @@ namespace :deploy do
 
   desc "Load environment-specific god configuration"
   task :god_config, roles: :app do
-    run "load #{release_path}/config/god/thin_core.#{rails_env}.god"
+    # sudo "god load #{release_path}/config/god/thin_core.#{rails_env}.god"
   end
   after "deploy:god", "deploy:god_config"
 
