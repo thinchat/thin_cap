@@ -9,6 +9,8 @@ set :user, "deployer"
 set :deploy_to, "/home/#{user}/apps/#{application}"
 set :deploy_via, :remote_cache
 set :use_sudo, false
+set :ssh_options, { :forward_agent => true }
+set :git_enable_submodules,1
 set :scm, "git"
 set :repository, "git@github.com:thinchat/#{application}.git"
 
@@ -48,7 +50,7 @@ namespace :deploy do
   task :fresh, roles: :app do
     puts "Deploying to fresh server..."
   end
-  after "deploy:fresh", "deploy:setup", "deploy", "deploy:nginx:restart"
+  after "deploy:fresh", "deploy:setup", "deploy"
 
   desc "Create the database"
   task :create_database, roles: :app do
