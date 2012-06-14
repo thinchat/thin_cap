@@ -12,25 +12,34 @@ set :use_sudo, false
 
 set :scm, "git"
 set :repository, "git@github.com:thinchat/#{application}.git"
-set :branch, "master"
 
 default_run_options[:pty] = true
 ssh_options[:forward_agent] = true
 
+def current_git_branch
+  `git symbolic-ref HEAD`.gsub("refs/heads/", "")
+end
+
+def prompt_with_default(message, default)
+  response = Capistrano::CLI.ui.ask "#{message} Default is: [#{default}] : "
+  response.empty? ? default : response
+end
+
+def set_branch
+  if current_git_branch != "master"
+    set :branch, ENV['BRANCH'] || prompt_with_default("Enter branch to deploy, or ENTER for default.", "#{current_git_branch.chomp}")
+  else
+    set :branch, ENV['BRANCH'] || "#{current_git_branch.chomp}"
+  end
+end
+
+set :branch, set_branch
+
 namespace :deploy do
-  desc "Start faye"
-  task :start, roles: :app, except: {no_release: true} do
-    sudo "service god-service start faye_server"
-  end
-
-  desc "Restart faye"
-  task :restart, roles: :app, except: {no_release: true} do
-    sudo "service god-service restart faye_server"
-  end
-
-  desc "Stop faye"
-  task :stop, roles: :app, except: {no_release: true} do
-    sudo "service god-service stop faye_server"
+  %w[start stop restart].each do |command|
+  desc "#{command} faye"
+  task command, roles: :app, except: {no_release: true} do
+    sudo "service god-service #{command} faye_server"
   end
 
   task :create_release_dir, :except => {:no_release => true} do
@@ -49,21 +58,12 @@ namespace :deploy do
     sudo "service god-service start"
   end
 
-  desc "Push secret files"
-  task :secret, roles: :app do
-    run "mkdir #{release_path}/config/secret"
-    transfer(:up, "config/secret/campfire_token.rb", "#{release_path}/config/secret/campfire_token.rb", :scp => true)
-    transfer(:up, "config/secret/redis_password.rb", "#{release_path}/config/secret/redis_password.rb", :scp => true)
-    require "./config/secret/redis_password.rb"
-    sudo "/usr/bin/redis-cli config set requirepass #{REDIS_PASSWORD}"
-  end
-  after "deploy:update_code", "deploy:secret"
-
-  desc "Install environment-specific god configuration"
+  desc "Load environment-specific god configuration"
   task :god_config, roles: :app do
-    run "cp #{release_path}/config/god/faye_server.#{rails_env}.god #{release_path}/config/faye_server.god"
+    sudo "god load #{release_path}/config/god/faye_server.#{rails_env}.god"
   end
-  after "deploy:secret", "deploy:god_config"
+  before "deploy:start", "deploy:god_config"
+  before "deploy:restart", "deploy:god_config"
 
   desc "Make sure local git is in sync with remote."
   task :check_revision, roles: :web do
