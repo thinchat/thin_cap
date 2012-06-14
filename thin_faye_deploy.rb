@@ -9,7 +9,8 @@ set :user, "deployer"
 set :deploy_to, "/home/#{user}/apps/#{application}"
 set :deploy_via, :remote_cache
 set :use_sudo, false
-
+set :ssh_options, { :forward_agent => true }
+set :git_enable_submodules,1
 set :scm, "git"
 set :repository, "git@github.com:thinchat/#{application}.git"
 
@@ -34,6 +35,8 @@ def set_branch
 end
 
 set :branch, set_branch
+
+after "deploy", "deploy:start"
 
 namespace :deploy do
   %w[start stop restart].each do |command|
