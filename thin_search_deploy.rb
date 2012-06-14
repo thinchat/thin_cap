@@ -53,6 +53,13 @@ namespace :deploy do
   end
   after "deploy:fresh", "deploy:setup", "deploy"
 
+  desc "Create the database"
+  task :create_database, roles: :app do
+    run "cd #{release_path} && bundle exec rake RAILS_ENV=#{rails_env} db:create"
+  end
+  after "deploy:db_config", "deploy:create_database"
+  after "deploy:create_database", "deploy:migrate"
+
   desc "Copy secret/database.yml to config/database.yml"
   task :db_config, roles: :app do
     run "cp #{release_path}/config/secret/database.#{application}.yml #{release_path}/config/database.yml"
