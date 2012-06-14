@@ -53,11 +53,11 @@ namespace :deploy do
   end
   after "deploy:fresh", "deploy:setup", "deploy"
 
-  task :secret, roles: :app do
-    transfer(:up, "config/secret/database.yml", "#{shared_path}/config/database.yml", :scp => true)
-    transfer(:up, "config/secret/redis_password.rb", "#{shared_path}/config/secret/redis_password.rb", :scp => true)
+  desc "Copy secret/database.yml to config/database.yml"
+  task :db_config, roles: :app do
+    run "cp #{release_path}/config/secret/database.#{application}.yml #{release_path}/config/database.yml"
   end
-  before "deploy:symlink_config", "deploy:secret"
+  after "deploy:finalize_update", "deploy:db_config"
 
   task :setup_config, roles: :app do
     run "mkdir -p #{shared_path}/config"
@@ -67,9 +67,6 @@ namespace :deploy do
   after "deploy:setup", "deploy:setup_config"
 
   task :symlink_config, roles: :app do
-    run "ln -nfs #{shared_path}/config/database.yml #{release_path}/config/database.yml"
-    run "mkdir -p #{release_path}/config/secret"
-    run "ln -nfs #{shared_path}/config/secret/redis_password.rb #{release_path}/config/secret/redis_password.rb"
     sudo "ln -nfs #{current_path}/config/unicorn/unicorn_#{stage}_init.sh /etc/init.d/unicorn_#{application}"
     run "chmod +x #{release_path}/config/unicorn/unicorn_#{stage}_init.sh"
   end
