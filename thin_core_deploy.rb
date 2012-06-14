@@ -114,8 +114,9 @@ namespace :deploy do
     sudo "chmod +x /etc/god/god-initd.sh"
     sudo "cp /etc/god/god-initd.sh /etc/init.d/god-service"
     sudo "update-rc.d god-service defaults"
+    sudo "service god-service start"
   end
-  after "deploy:god_config", "deploy:god"
+  after "deploy:setup_config", "deploy:god"
 
   desc "Create the database"
   task :create_database, roles: :app do
@@ -140,11 +141,11 @@ namespace :deploy do
   end
   after "deploy:finalize_update", "deploy:symlink_config"
 
-  desc "Install environment-specific god configuration"
+  desc "Load environment-specific god configuration"
   task :god_config, roles: :app do
-    run "cp #{release_path}/config/god/thin_core.#{rails_env}.god #{release_path}/config/thin_core.god"
+    run "load #{release_path}/config/god/thin_core.#{rails_env}.god"
   end
-  after "deploy:symlink_config", "deploy:god_config"
+  after "deploy:god", "deploy:god_config"
 
   desc "Make sure local git is in sync with remote."
   task :check_revision, roles: :web do
