@@ -54,7 +54,7 @@ namespace :deploy do
   task :create_database, roles: :app do
     run "cd #{release_path} && bundle exec rake RAILS_ENV=#{rails_env} db:create"
   end
-  after "deploy:symlink_config", "deploy:create_database"
+  after "deploy:db_config", "deploy:create_database"
   after "deploy:create_database", "deploy:migrate"
 
   desc "Setup unicorn configuration"
@@ -67,11 +67,11 @@ namespace :deploy do
     run "mkdir -p #{fetch :releases_path}"
   end
 
-  desc "Symlink shared/database.yml to config/database.yml"
-  task :symlink_config, roles: :app do
-    run "ln -nfs #{shared_path}/config/database.yml #{release_path}/config/database.yml"
+  desc "Copy secret/database.yml to config/database.yml"
+  task :db_config, roles: :app do
+    run "cp #{release_path}/config/secret/database.#{application}.yml #{release_path}/config/database.yml"
   end
-  after "deploy:finalize_update", "deploy:symlink_config"
+  after "deploy:finalize_update", "deploy:db_config"
 
   desc "Make sure local git is in sync with remote."
   task :check_revision, roles: :web do
