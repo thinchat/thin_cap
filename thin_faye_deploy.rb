@@ -37,9 +37,10 @@ set :branch, set_branch
 
 namespace :deploy do
   %w[start stop restart].each do |command|
-  desc "#{command} faye"
-  task command, roles: :app, except: {no_release: true} do
-    sudo "service god-service #{command} faye_server"
+    desc "#{command} faye"
+    task command, roles: :app, except: {no_release: true} do
+      sudo "service god-service #{command} faye_server"
+    end
   end
 
   task :create_release_dir, :except => {:no_release => true} do
@@ -51,12 +52,7 @@ namespace :deploy do
   task :fresh, roles: :app do
     puts "Deploying to fresh server..."
   end
-  after "deploy:fresh", "deploy:setup", "deploy", "deploy:start_god"
-
-  desc "Start the God service on the server"
-  task :start_god, roles: :app do
-    sudo "service god-service start"
-  end
+  after "deploy:fresh", "deploy:setup", "deploy"
 
   desc "Load environment-specific god configuration"
   task :god_config, roles: :app do
