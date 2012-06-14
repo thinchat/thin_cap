@@ -52,7 +52,6 @@ namespace :deploy do
       sudo "/etc/init.d/unicorn_#{application} #{command}"
     end
   end
-  
 
   desc "Deploy to Vagrant (assumes you've run 'rake vagrant:setup')"
   task :vagrant, roles: :app do

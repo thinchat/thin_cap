@@ -10,15 +10,34 @@ set :user, "deployer"
 set :deploy_to, "/home/#{user}/apps/#{application}"
 set :deploy_via, :remote_cache
 set :use_sudo, false
-
+set :ssh_options, { :forward_agent => true }
+set :git_enable_submodules,1
 set :scm, "git"
 set :repository, "git@github.com:thinchat/#{application}.git"
-set :branch, "master"
 
 default_run_options[:pty] = true
 ssh_options[:forward_agent] = true
 
 after "deploy", "deploy:nginx_config", "deploy:cleanup" # keep only the last 5 releases
+
+def current_git_branch
+  `git symbolic-ref HEAD`.gsub("refs/heads/", "")
+end
+
+def prompt_with_default(message, default)
+  response = Capistrano::CLI.ui.ask "#{message} Default is: [#{default}] : "
+  response.empty? ? default : response
+end
+
+def set_branch
+  if current_git_branch != "master"
+    set :branch, ENV['BRANCH'] || prompt_with_default("Enter branch to deploy, or ENTER for default.", "#{current_git_branch.chomp}")
+  else
+    set :branch, ENV['BRANCH'] || "#{current_git_branch.chomp}"
+  end
+end
+
+set :branch, set_branch
 
 namespace :deploy do
   %w[start stop restart].each do |command|
@@ -27,6 +46,12 @@ namespace :deploy do
       run "/etc/init.d/unicorn_#{application} #{command}" 
     end
   end
+
+  desc "Deploy to a server for the first time (assumes you've run 'cap stage-name provision')"
+  task :fresh, roles: :app do
+    puts "Deploying to fresh server..."
+  end
+  after "deploy:fresh", "deploy:setup", "deploy"
 
   task :secret, roles: :app do
     transfer(:up, "config/secret/database.yml", "#{shared_path}/config/database.yml", :scp => true)
