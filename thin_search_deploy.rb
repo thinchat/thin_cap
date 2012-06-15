@@ -66,13 +66,6 @@ namespace :deploy do
   end
   after "deploy:finalize_update", "deploy:db_config"
 
-  task :setup_config, roles: :app do
-    run "mkdir -p #{shared_path}/config"
-    run "mkdir -p #{shared_path}/config/secret"
-    puts "Now edit the config files in #{shared_path}."
-  end
-  after "deploy:setup", "deploy:setup_config"
-
   task :symlink_config, roles: :app do
     sudo "ln -nfs #{current_path}/config/unicorn/unicorn_#{stage}_init.sh /etc/init.d/unicorn_#{application}"
     run "chmod +x #{release_path}/config/unicorn/unicorn_#{stage}_init.sh"
