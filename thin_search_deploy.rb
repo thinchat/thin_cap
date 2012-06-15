@@ -18,7 +18,7 @@ set :repository, "git@github.com:thinchat/#{application}.git"
 default_run_options[:pty] = true
 ssh_options[:forward_agent] = true
 
-after "deploy", "deploy:nginx_config", "deploy:cleanup" # keep only the last 5 releases
+after "deploy", "deploy:cleanup", 'thinking_sphinx:start', 'thinking_sphinx:rebuild' # keep only the last 5 releases
 
 def current_git_branch
   `git symbolic-ref HEAD`.gsub("refs/heads/", "")
@@ -83,5 +83,4 @@ namespace :deploy do
   before "deploy", "deploy:check_revision"
 
   before 'deploy:update_code', 'thinking_sphinx:stop'
-  after 'deploy:update_code', 'thinking_sphinx:start', 'thinking_sphinx:index'
 end
