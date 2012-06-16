@@ -10,15 +10,34 @@ set :user, "deployer"
 set :deploy_to, "/home/#{user}/apps/#{application}"
 set :deploy_via, :remote_cache
 set :use_sudo, false
-
+set :ssh_options, { :forward_agent => true }
+set :git_enable_submodules,1
 set :scm, "git"
 set :repository, "git@github.com:thinchat/#{application}.git"
-set :branch, "master"
 
 default_run_options[:pty] = true
 ssh_options[:forward_agent] = true
 
-after "deploy", "deploy:nginx_config", "deploy:cleanup" # keep only the last 5 releases
+after "deploy", "deploy:cleanup", 'thinking_sphinx:start', 'thinking_sphinx:rebuild' # keep only the last 5 releases
+
+def current_git_branch
+  `git symbolic-ref HEAD`.gsub("refs/heads/", "")
+end
+
+def prompt_with_default(message, default)
+  response = Capistrano::CLI.ui.ask "#{message} Default is: [#{default}] : "
+  response.empty? ? default : response
+end
+
+def set_branch
+  if current_git_branch != "master"
+    set :branch, ENV['BRANCH'] || prompt_with_default("Enter branch to deploy, or ENTER for default.", "#{current_git_branch.chomp}")
+  else
+    set :branch, ENV['BRANCH'] || "#{current_git_branch.chomp}"
+  end
+end
+
+set :branch, set_branch
 
 namespace :deploy do
   %w[start stop restart].each do |command|
@@ -28,23 +47,26 @@ namespace :deploy do
     end
   end
 
-  task :secret, roles: :app do
-    transfer(:up, "config/secret/database.yml", "#{shared_path}/config/database.yml", :scp => true)
-    transfer(:up, "config/secret/redis_password.rb", "#{shared_path}/config/secret/redis_password.rb", :scp => true)
+  desc "Deploy to a server for the first time (assumes you've run 'cap stage-name provision')"
+  task :fresh, roles: :app do
+    puts "Deploying to fresh server..."
   end
-  before "deploy:symlink_config", "deploy:secret"
+  after "deploy:fresh", "deploy:setup", "deploy"
 
-  task :setup_config, roles: :app do
-    run "mkdir -p #{shared_path}/config"
-    run "mkdir -p #{shared_path}/config/secret"
-    puts "Now edit the config files in #{shared_path}."
+  desc "Create the database"
+  task :create_database, roles: :app do
+    run "cd #{release_path} && bundle exec rake RAILS_ENV=#{rails_env} db:create"
   end
-  after "deploy:setup", "deploy:setup_config"
+  after "deploy:db_config", "deploy:create_database"
+  after "deploy:create_database", "deploy:migrate"
+
+  desc "Copy secret/database.yml to config/database.yml"
+  task :db_config, roles: :app do
+    run "cp #{release_path}/config/secret/database.#{application}.yml #{release_path}/config/database.yml"
+  end
+  after "deploy:finalize_update", "deploy:db_config"
 
   task :symlink_config, roles: :app do
-    run "ln -nfs #{shared_path}/config/database.yml #{release_path}/config/database.yml"
-    run "mkdir -p #{release_path}/config/secret"
-    run "ln -nfs #{shared_path}/config/secret/redis_password.rb #{release_path}/config/secret/redis_password.rb"
     sudo "ln -nfs #{current_path}/config/unicorn/unicorn_#{stage}_init.sh /etc/init.d/unicorn_#{application}"
     run "chmod +x #{release_path}/config/unicorn/unicorn_#{stage}_init.sh"
   end
@@ -61,5 +83,4 @@ namespace :deploy do
   before "deploy", "deploy:check_revision"
 
   before 'deploy:update_code', 'thinking_sphinx:stop'
-  after 'deploy:update_code', 'thinking_sphinx:start', 'thinking_sphinx:index'
 end
