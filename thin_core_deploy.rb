@@ -65,18 +65,6 @@ namespace :deploy do
   end
   after "deploy:fresh", "deploy:setup", "deploy", "deploy:nginx:restart"
 
-  desc "Push secret files"
-  task :secret, roles: :app do
-    run "mkdir #{release_path}/config/secret"
-    run "mkdir -p #{shared_path}/config"
-    transfer(:up, "config/secret/redis_password.rb", "#{release_path}/config/secret/redis_password.rb", :scp => true)
-    transfer(:up, "config/secret/redis.conf", "/home/deployer/redis.conf", :scp => true)
-    transfer(:up, "config/secret/database.yml", "#{shared_path}/config/database.yml", :scp => true)
-    sudo "mv /home/deployer/redis.conf /etc/redis/redis.conf"
-    require "./config/secret/redis_password.rb"
-    sudo "/usr/bin/redis-cli config set requirepass #{REDIS_PASSWORD}"
-  end
-
   desc "Push ssh keys to authorized_keys"
   task :keys, roles: :app do
     run "mkdir /home/deployer/.ssh"
@@ -137,7 +125,7 @@ namespace :deploy do
   task :db_config, roles: :app do
     run "cp #{release_path}/config/secret/database.#{application}.yml #{release_path}/config/database.yml"
   end
-  after "deploy:finalize_update", "deploy:db_config"
+  before "deploy:assets:precompile", "deploy:db_config"
 
   desc "Load environment-specific god configuration"
   task :god_config, roles: :app do
