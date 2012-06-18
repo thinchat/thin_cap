@@ -42,6 +42,7 @@ namespace :deploy do
   %w[start stop restart].each do |command|
     desc "#{command} faye"
     task command, roles: :app, except: {no_release: true} do
+      sudo "god load #{current_path}/config/god/faye_server.#{rails_env}.god"
       sudo "service god-service #{command} faye_server"
     end
   end
@@ -56,13 +57,6 @@ namespace :deploy do
     puts "Deploying to fresh server..."
   end
   after "deploy:fresh", "deploy:setup", "deploy"
-
-  desc "Load environment-specific god configuration"
-  task :god_config, roles: :app do
-    sudo "god load #{release_path}/config/god/faye_server.#{rails_env}.god"
-  end
-  before "deploy:start", "deploy:god_config"
-  before "deploy:restart", "deploy:god_config"
 
   desc "Make sure local git is in sync with remote."
   task :check_revision, roles: :web do
