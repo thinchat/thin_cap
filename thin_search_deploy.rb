@@ -39,7 +39,7 @@ end
 
 set :branch, set_branch
 
-after "deploy", "deploy:god:load_config"
+after "deploy", "god:load_config"
 
 namespace :deploy do
   %w[start stop restart].each do |command|
