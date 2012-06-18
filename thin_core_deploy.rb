@@ -154,6 +154,19 @@ namespace :deploy do
       sudo "ln -nfs #{current_path}/config/nginx.conf /etc/nginx/sites-enabled/default"
     end
   end
+
+  namespace :mysql do
+    desc "Restart MySQL"
+    task :restart, roles: :app do
+      sudo "service mysql restart"
+    end
+
+    desc "Copy my.conf to /etc/mysql/my.cnf"
+    task :config, roles: :app do
+      sudo "cp #{current_path}/config/my.conf /etc/mysql/my.cnf"
+    end
+    after "deploy:mysql:config", "deploy:mysql:restart"
+  end
 end
 
 desc "Provision server"
