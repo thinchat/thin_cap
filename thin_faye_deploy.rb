@@ -61,8 +61,7 @@ namespace :deploy do
   task :god_config, roles: :app do
     sudo "god load #{release_path}/config/god/faye_server.#{rails_env}.god"
   end
-  before "deploy:start", "deploy:god_config"
-  before "deploy:restart", "deploy:god_config"
+  after "deploy:update_code", "deploy:god_config"
 
   desc "Make sure local git is in sync with remote."
   task :check_revision, roles: :web do
