@@ -58,12 +58,6 @@ namespace :deploy do
   end
   after "deploy:fresh", "deploy:setup", "deploy"
 
-  desc "Load environment-specific god configuration"
-  task :god_config, roles: :app do
-    sudo "god load #{release_path}/config/god/faye_server.#{rails_env}.god"
-  end
-  after "deploy:update_code", "deploy:god_config"
-
   desc "Make sure local git is in sync with remote."
   task :check_revision, roles: :web do
     unless `git rev-parse HEAD` == `git rev-parse origin/master`
