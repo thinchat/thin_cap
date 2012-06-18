@@ -39,6 +39,8 @@ end
 
 set :branch, set_branch
 
+after "deploy", "deploy:god:load_config"
+
 namespace :deploy do
   %w[start stop restart].each do |command|
     desc "#{command} unicorn server"
@@ -46,6 +48,7 @@ namespace :deploy do
       run "/etc/init.d/unicorn_#{application} #{command}" 
     end
   end
+
 
   desc "Deploy to a server for the first time (assumes you've run 'cap stage-name provision')"
   task :fresh, roles: :app do
@@ -72,6 +75,14 @@ namespace :deploy do
   end
   after "deploy:finalize_update", "deploy:symlink_config"
 
+  task :listener, roles: :app do
+    run "cd #{current_path} && RAILS_ENV=production bundle exec rake listen &"
+  end
+
+  task :scheduler, roles: :app do
+    run "cd #{current_path} && RAILS_ENV=production bundle exec rake resque:scheduler &"
+  end
+
   desc "Make sure local git is in sync with remote."
   task :check_revision, roles: :web do
     unless `git rev-parse HEAD` == `git rev-parse origin/master`
@@ -83,4 +94,16 @@ namespace :deploy do
   before "deploy", "deploy:check_revision"
 
   before 'deploy:update_code', 'thinking_sphinx:stop'
+end
+
+namespace :god do
+  desc "Status of god tasks"
+  task :status, roles: :app do
+    sudo "god status"
+  end
+
+  desc "Load god file"
+  task :load_config, roles: :app do
+    sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
+  end
 end

@@ -90,3 +90,15 @@ namespace :deploy do
   end
   before "deploy", "deploy:check_revision"
 end
+
+namespace :god do
+  desc "Status of god tasks"
+  task :status, roles: :app do
+    sudo "god status"
+  end
+
+  desc "Load god file"
+  task :load_config, roles: :app do
+    sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
+  end
+end
