@@ -39,13 +39,6 @@ end
 set :branch, set_branch
 
 namespace :deploy do
-  # %w[start stop restart].each do |command|
-  #   desc "#{command} unicorn server"
-  #   task command, roles: :app, except: {no_release: true} do
-  #     sudo "service god-service #{command} #{application}"
-  #   end
-  # end
-
   %w[start stop restart].each do |command|
     desc "#{command} unicorn server"
     task command, roles: :app, except: {no_release: true} do
@@ -156,16 +149,10 @@ namespace :deploy do
   end
 
   namespace :mysql do
-    desc "Restart MySQL"
-    task :restart, roles: :app do
-      sudo "service mysql restart"
-    end
-
     desc "Copy my.conf to /etc/mysql/my.cnf"
     task :config, roles: :app do
-      sudo "cp #{current_path}/config/my.conf /etc/mysql/my.cnf"
+      sudo "cp #{current_path}/config/my.cnf /etc/mysql/my.cnf"
     end
-    after "deploy:mysql:config", "deploy:mysql:restart"
   end
 end
 
@@ -181,7 +168,7 @@ task :provision do
     puts "Phew. That was a close one eh?"
   end
 end
-after "provision", "deploy:keys", "deploy:hostname"
+after "provision", "deploy:keys", "deploy:hostname", "deploy:mysql:config"
 
 namespace :god do
   desc "Status of god tasks"
