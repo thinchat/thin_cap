@@ -49,12 +49,10 @@ namespace :deploy do
 
   namespace :workers do
     %w[start stop restart].each do |command|
-      desc "#{command} #{application}"
+      desc "#{command} core_resque_worker"
       task command, roles: :app, except: {no_release: true} do
         sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
-        3.times do |num|
-          sudo "god #{command} core_resque_worker_#{num}"
-        end
+        sudo "god #{command} core_resque_worker"
       end
     end
   end
@@ -132,12 +130,6 @@ namespace :deploy do
     run "cp #{release_path}/config/secret/database.#{application}.yml #{release_path}/config/database.yml"
   end
   before "deploy:assets:precompile", "deploy:db_config"
-
-  desc "Load environment-specific god configuration"
-  task :god_config, roles: :app do
-    # sudo "god load #{release_path}/config/god/thin_core.#{rails_env}.god"
-  end
-  after "deploy:god", "deploy:god_config"
 
   desc "Make sure local git is in sync with remote."
   task :check_revision, roles: :web do
