@@ -47,6 +47,18 @@ namespace :deploy do
     end
   end
 
+  namespace :workers do
+    %w[start stop restart].each do |command|
+      desc "#{command} #{application}"
+      task command, roles: :app, except: {no_release: true} do
+        sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
+        3.times do |num|
+          sudo "god #{command} core_resque_worker_#{num}"
+        end
+      end
+    end
+  end
+
   desc "Deploy to Vagrant (assumes you've run 'rake vagrant:setup')"
   task :vagrant, roles: :app do
     puts "Deploying to Vagrant..."
