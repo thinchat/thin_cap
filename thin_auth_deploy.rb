@@ -40,9 +40,10 @@ set :branch, set_branch
 
 namespace :deploy do
   %w[start stop restart].each do |command|
-    desc "#{command} unicorn server"
+    desc "#{command} #{application}"
     task command, roles: :app, except: {no_release: true} do
-      run "/etc/init.d/unicorn_#{application} #{command}"
+      sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
+      sudo "god #{command} #{application}"
     end
   end
 
