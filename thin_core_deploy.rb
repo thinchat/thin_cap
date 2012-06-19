@@ -106,7 +106,6 @@ namespace :deploy do
     sudo "update-rc.d god-service defaults"
     sudo "service god-service start"
   end
-  after "deploy", "deploy:god"
 
   desc "Create the database"
   task :create_database, roles: :app do
@@ -175,7 +174,7 @@ task :provision do
     puts "Phew. That was a close one eh?"
   end
 end
-after "provision", "deploy:keys", "deploy:hostname", "deploy:mysql:config"
+after "provision", "deploy:keys", "deploy:hostname", "deploy:mysql:config", "deploy:god"
 
 namespace :god do
   desc "Status of god tasks"
