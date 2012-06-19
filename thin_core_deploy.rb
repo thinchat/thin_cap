@@ -156,7 +156,9 @@ namespace :deploy do
   namespace :mysql do
     desc "Copy my.conf to /etc/mysql/my.cnf"
     task :config, roles: :app do
-      sudo "cp #{current_path}/config/my.cnf /etc/mysql/my.cnf"
+      transfer(:up, "config/my.cnf", "/home/deployer/my.cnf", :scp => true)
+      sudo "cp /home/deployer/my.cnf /etc/mysql/my.cnf"
+      sudo "service mysql restart"
     end
   end
 end
