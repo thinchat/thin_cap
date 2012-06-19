@@ -43,7 +43,7 @@ namespace :deploy do
     desc "#{command} faye"
     task command, roles: :app, except: {no_release: true} do
       sudo "god load #{current_path}/config/god/faye_server.#{rails_env}.god"
-      sudo "service god-service #{command} faye_server"
+      sudo "service god-service #{command} thin_faye"
     end
   end
 
