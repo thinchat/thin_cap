@@ -17,7 +17,7 @@ set :repository, "git@github.com:thinchat/#{application}.git"
 default_run_options[:pty] = true
 ssh_options[:forward_agent] = true
 
-after "deploy", "deploy:nginx:config", "deploy:cleanup" # keep only the last 5 releases
+after "deploy", "deploy:nginx:config", "deploy:cleanup", "deploy:workers:start" # keep only the last 5 releases
 
 def current_git_branch
   `git symbolic-ref HEAD`.gsub("refs/heads/", "")
@@ -39,17 +39,21 @@ end
 set :branch, set_branch
 
 namespace :deploy do
-  # %w[start stop restart].each do |command|
-  #   desc "#{command} unicorn server"
-  #   task command, roles: :app, except: {no_release: true} do
-  #     sudo "service god-service #{command} #{application}"
-  #   end
-  # end
-
   %w[start stop restart].each do |command|
-    desc "#{command} unicorn server"
+    desc "#{command} #{application}"
     task command, roles: :app, except: {no_release: true} do
-      sudo "/etc/init.d/unicorn_#{application} #{command}"
+      sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
+      sudo "god #{command} #{application}"
+    end
+  end
+
+  namespace :workers do
+    %w[start stop restart].each do |command|
+      desc "#{command} core_resque_worker"
+      task command, roles: :app, except: {no_release: true} do
+        sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
+        sudo "god #{command} core_resque_worker"
+      end
     end
   end
 
@@ -127,12 +131,6 @@ namespace :deploy do
   end
   before "deploy:assets:precompile", "deploy:db_config"
 
-  desc "Load environment-specific god configuration"
-  task :god_config, roles: :app do
-    # sudo "god load #{release_path}/config/god/thin_core.#{rails_env}.god"
-  end
-  after "deploy:god", "deploy:god_config"
-
   desc "Make sure local git is in sync with remote."
   task :check_revision, roles: :web do
     unless `git rev-parse HEAD` == `git rev-parse origin/#{branch}`
@@ -154,6 +152,13 @@ namespace :deploy do
       sudo "ln -nfs #{current_path}/config/nginx.conf /etc/nginx/sites-enabled/default"
     end
   end
+
+  namespace :mysql do
+    desc "Copy my.conf to /etc/mysql/my.cnf"
+    task :config, roles: :app do
+      sudo "cp #{current_path}/config/my.cnf /etc/mysql/my.cnf"
+    end
+  end
 end
 
 desc "Provision server"
@@ -168,7 +173,7 @@ task :provision do
     puts "Phew. That was a close one eh?"
   end
 end
-after "provision", "deploy:keys", "deploy:hostname"
+after "provision", "deploy:keys", "deploy:hostname", "deploy:mysql:config"
 
 namespace :god do
   desc "Status of god tasks"

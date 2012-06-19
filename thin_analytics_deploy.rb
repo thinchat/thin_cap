@@ -17,7 +17,7 @@ set :repository, "git@github.com:thinchat/#{application}.git"
 default_run_options[:pty] = true
 ssh_options[:forward_agent] = true
 
-after "deploy", "deploy:cleanup", "deploy:bean" # keep only the last 5 releases
+after "deploy", "deploy:cleanup", "deploy:workers:start" # keep only the last 5 releases
 
 def current_git_branch
   `git symbolic-ref HEAD`.gsub("refs/heads/", "")
@@ -40,9 +40,22 @@ set :branch, set_branch
 
 namespace :deploy do
   %w[start stop restart].each do |command|
-    desc "#{command} unicorn server"
+    desc "#{command} #{application}"
     task command, roles: :app, except: {no_release: true} do
-      run "/etc/init.d/unicorn_#{application} #{command}"
+      sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
+      sudo "god #{command} #{application}"
+    end
+  end
+
+  namespace :workers do
+    %w[start stop restart].each do |command|
+      desc "#{command} #{application}"
+      task command, roles: :app, except: {no_release: true} do
+        sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
+        %w[analytics_bean].each do |worker|
+          sudo "god #{command} #{worker}"
+        end
+      end
     end
   end
 
@@ -74,11 +87,6 @@ namespace :deploy do
     run "cp #{release_path}/config/secret/database.#{application}.yml #{release_path}/config/database.yml"
   end
   after "deploy:finalize_update", "deploy:db_config"
-
-  desc "Start Bean"
-  task :bean, roles: :app do
-    run "rake bean &"
-  end
 
   desc "Make sure local git is in sync with remote."
   task :check_revision, roles: :web do

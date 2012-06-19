@@ -18,7 +18,7 @@ set :repository, "git@github.com:thinchat/#{application}.git"
 default_run_options[:pty] = true
 ssh_options[:forward_agent] = true
 
-after "deploy", "deploy:cleanup", 'thinking_sphinx:start', 'thinking_sphinx:rebuild' # keep only the last 5 releases
+after "deploy", "deploy:cleanup", 'thinking_sphinx:start', 'thinking_sphinx:rebuild', "deploy:workers:start"
 
 def current_git_branch
   `git symbolic-ref HEAD`.gsub("refs/heads/", "")
@@ -39,16 +39,26 @@ end
 
 set :branch, set_branch
 
-after "deploy", "deploy:god:load_config"
-
 namespace :deploy do
   %w[start stop restart].each do |command|
-    desc "#{command} unicorn server"
+    desc "#{command} #{application}"
     task command, roles: :app, except: {no_release: true} do
-      run "/etc/init.d/unicorn_#{application} #{command}" 
+      sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
+      sudo "god #{command} #{application}"
     end
   end
 
+  namespace :workers do
+    %w[start stop restart].each do |command|
+      desc "#{command} #{application}"
+      task command, roles: :app, except: {no_release: true} do
+        sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
+        %w[search_scheduler search_listener search_worker].each do |worker|
+          sudo "god #{command} #{worker}"
+        end
+      end
+    end
+  end
 
   desc "Deploy to a server for the first time (assumes you've run 'cap stage-name provision')"
   task :fresh, roles: :app do
