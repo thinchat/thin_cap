@@ -48,6 +48,18 @@ namespace :deploy do
     end
   end
 
+  namespace :workers do
+    %w[start stop restart].each do |command|
+      desc "#{command} #{application}"
+      task command, roles: :app, except: {no_release: true} do
+        sudo "god load #{current_path}/config/god/#{application}.#{rails_env}.god"
+        %w[search_scheduler search_listener search_worker].each do |worker|
+          sudo "god #{command} #{worker}"
+        end
+      end
+    end
+  end
+
   desc "Deploy to a server for the first time (assumes you've run 'cap stage-name provision')"
   task :fresh, roles: :app do
     puts "Deploying to fresh server..."
